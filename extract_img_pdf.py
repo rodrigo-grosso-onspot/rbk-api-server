@@ -2,6 +2,7 @@ import os
 import fitz  # PyMuPDF
 
 UPLOAD_FOLDER = "uploads"
+DOMAIN = "https://rbk.onspot.travel"  # Adicione seu domínio aqui
 
 def extract_images(pdf_path):
     doc = fitz.open(pdf_path)
@@ -19,6 +20,7 @@ def extract_images(pdf_path):
             with open(img_path, "wb") as img_file:
                 img_file.write(image_bytes)
 
-            image_urls.append(f"/uploads/{img_filename}")  # URL relativa
+            # Retorna a URL completa da imagem
+            image_urls.append(f"{DOMAIN}/uploads/{img_filename}")
 
     return image_urls
