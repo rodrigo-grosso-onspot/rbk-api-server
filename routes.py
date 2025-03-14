@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from extract_img_pdf import extract_images
+from extract_img_pdf import extract_images_from_stream
 import os
 
 app = Flask(__name__)
@@ -13,10 +13,9 @@ def upload_pdf():
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
 
     pdf_file = request.files["pdf"]
-    pdf_path = os.path.join(UPLOAD_FOLDER, pdf_file.filename)
-    pdf_file.save(pdf_path)
-
-    image_urls = extract_images(pdf_path)
+    
+    image_urls = extract_images_from_stream(pdf_file, pdf_file.filename)
+    
     return jsonify({"images": image_urls})
 
 @app.route("/")
