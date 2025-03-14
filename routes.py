@@ -7,7 +7,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route("/extract_img_pdf", methods=["POST"])
+@app.route("/extract-images", methods=["POST"])
 def upload_pdf():
     if "pdf" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
