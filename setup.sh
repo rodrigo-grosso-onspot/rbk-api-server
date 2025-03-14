@@ -1,28 +1,33 @@
 #!/bin/bash
 
 DOMAIN="rbk.onspot.travel"
+APP_DIR="/var/app"
+NGINX_CONF="/etc/nginx/sites-available/app"
+REPO_URL="https://github.com/rodrigo-grosso-onspot/rbk-api-server.git"
+EMAIL="hello@onspot.travel"
 
 echo "🔄 Atualizando pacotes e instalando dependências..."
 sudo apt update && sudo apt install -y nginx python3-venv python3-pip gunicorn git certbot python3-certbot-nginx
 
 echo "📂 Criando diretório da aplicação..."
-sudo mkdir -p /var/app
-sudo chown $USER:$USER /var/app
+sudo mkdir -p $APP_DIR
+sudo chown $USER:$USER $APP_DIR
 
 echo "🚀 Clonando ou atualizando o repositório..."
-if [ ! -d "/var/app/.git" ]; then
-    git clone https://github.com/rodrigo-grosso-onspot/rbk-api-server.git /var/app
+if [ ! -d "$APP_DIR/.git" ]; then
+    git clone $REPO_URL $APP_DIR
 else
-    cd /var/app
+    cd $APP_DIR
+    git reset --hard
     git pull origin main
 fi
 
-cd /var/app
+cd $APP_DIR
 
 echo "📁 Garantindo que a pasta de uploads existe..."
-mkdir -p /var/app/uploads
-chmod -R 755 /var/app/uploads
-chown -R www-data:www-data /var/app/uploads
+mkdir -p $APP_DIR/uploads
+chmod -R 755 $APP_DIR/uploads
+chown -R www-data:www-data $APP_DIR/uploads
 
 echo "🌍 Configurando ambiente virtual..."
 python3 -m venv venv
@@ -31,20 +36,58 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 echo "⚙️ Configurando Nginx..."
-sudo cp config/nginx.conf /etc/nginx/sites-available/app
-sudo ln -sf /etc/nginx/sites-available/app /etc/nginx/sites-enabled/
+sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
+if [ ! -f "$NGINX_CONF" ]; then
+    echo "🔧 Criando configuração padrão para o Nginx..."
+    sudo tee $NGINX_CONF > /dev/null <<EOL
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+}
+EOL
+fi
+
+sudo ln -sf $NGINX_CONF /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
 
 echo "🔐 Gerando certificado SSL..."
-sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m hello@onspot.travel
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
 echo "🔁 Configurando renovação automática do SSL..."
-echo "0 0 * * * certbot renew --quiet" | sudo tee -a /etc/crontab > /dev/null
+if ! crontab -l | grep -q "certbot renew"; then
+    echo "0 0 * * * certbot renew --quiet" | sudo tee -a /etc/crontab > /dev/null
+fi
 
 echo "🔑 Dando permissão para execução do Gunicorn..."
 chmod +x start.sh
 
-echo "🔥 Iniciando aplicação com Gunicorn..."
-nohup ./start.sh > output.log 2>&1 &
+echo "🔥 Criando e ativando o serviço Gunicorn..."
+sudo tee /etc/systemd/system/gunicorn.service > /dev/null <<EOL
+[Unit]
+Description=Gunicorn instance to serve $DOMAIN
+After=network.target
+
+[Service]
+User=$USER
+Group=www-data
+WorkingDirectory=$APP_DIR
+Environment="PATH=$APP_DIR/venv/bin"
+ExecStart=$APP_DIR/venv/bin/gunicorn --workers 3 --bind unix:$APP_DIR/gunicorn.sock wsgi:app
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+sudo systemctl daemon-reload
+sudo systemctl enable gunicorn
+sudo systemctl restart gunicorn
 
 echo "✅ Setup concluído! Acesse a API em https://$DOMAIN"
