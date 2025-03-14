@@ -51,6 +51,11 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
+
+    location /uploads/ {
+        alias $APP_DIR/uploads/;
+        autoindex on;
+    }
 }
 EOL
 fi
@@ -80,7 +85,7 @@ User=$USER
 Group=www-data
 WorkingDirectory=$APP_DIR
 Environment="PATH=$APP_DIR/venv/bin"
-ExecStart=$APP_DIR/venv/bin/gunicorn --workers 3 --bind unix:$APP_DIR/gunicorn.sock wsgi:app
+ExecStart=$APP_DIR/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 wsgi:app
 
 [Install]
 WantedBy=multi-user.target
@@ -89,5 +94,6 @@ EOL
 sudo systemctl daemon-reload
 sudo systemctl enable gunicorn
 sudo systemctl restart gunicorn
+sudo systemctl restart nginx
 
 echo "✅ Setup concluído! Acesse a API em https://$DOMAIN"
