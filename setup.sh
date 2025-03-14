@@ -45,6 +45,8 @@ server {
     listen 80;
     server_name $DOMAIN;
 
+    client_max_body_size 80M;
+
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host \$host;
@@ -96,4 +98,4 @@ sudo systemctl enable gunicorn
 sudo systemctl restart gunicorn
 sudo systemctl restart nginx
 
-echo "✅ Setup concluído! Acesse a API em https://$DOMAIN"
+echo "✅ Setup concluído! Acesse a API em https://$DOMAIN"gti
