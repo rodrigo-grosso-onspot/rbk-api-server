@@ -98,4 +98,4 @@ sudo systemctl enable gunicorn
 sudo systemctl restart gunicorn
 sudo systemctl restart nginx
 
-echo "✅ Setup concluído! Acesse a API em https://$DOMAIN"gti
+echo "✅ Setup concluído! Acesse a API em https://$DOMAIN"
