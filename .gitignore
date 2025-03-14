@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.envvenv/
+__pycache__/
+*.log
+*.pid
+output.log
+.env
